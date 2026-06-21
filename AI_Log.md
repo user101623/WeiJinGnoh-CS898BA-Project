@@ -1,3 +1,3 @@
 | Date and Time | Prompt | Tool | Response Synopsis | Change |
 | :--- | :--- | :--- | :--- | :--- |
-| 06/20/2026<br>08:11 PM |  | Gemini | Today | Changed dinner plans. |
+| 06/20/2026<br>09:05 PM | Provide ideas for all contents required in project milestone 1 for project pitch & scope approval | Gemini | Identified key phases for core methodology which includes degradation, restoration, surface homogeneity analysis, and classification, and then mapping them to CS 898BA requirements. | Wrote the project pitch & scope approval |
