@@ -4,3 +4,4 @@ venv/
 env/
 Test/
 Training/
+tuner_logs/

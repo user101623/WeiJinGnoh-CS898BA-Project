@@ -6,44 +6,57 @@ def build_autoencoder(input_shape=(100, 100, 3)):
     
     # Encoder
     x = layers.Conv2D(32, (3, 3), activation='relu', padding='same')(inputs)
-    x = layers.MaxPooling2D((2, 2), padding='same')(x) # Added padding='same'
+    x = layers.MaxPooling2D((2, 2), padding='same')(x)
     
     # Decoder
     x = layers.Conv2DTranspose(32, (3, 3), strides=2, activation='relu', padding='same')(x)
-    
-    # Map the 32 filters back to 3 RGB channels
     outputs = layers.Conv2D(3, (3, 3), activation='sigmoid', padding='same')(x)
     
     model = models.Model(inputs, outputs)
-    
     model.compile(
-    optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001), # Slower, safer step
-    loss='categorical_crossentropy', 
-    metrics=['accuracy']
+        optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001),
+        loss='categorical_crossentropy', 
+        metrics=['accuracy']
     )
-
     return model
 
-def build_fused_classifier(num_classes, img_shape=(100, 100, 3), feat_shape=(2,)):
-    # Spatial Path (CNN)
-    img_input = layers.Input(shape=img_shape, name="img_input")
-    x = layers.Conv2D(32, (3, 3), activation='relu')(img_input)
-    x = layers.MaxPooling2D()(x)
-    spatial = layers.GlobalAveragePooling2D()(x)
+def build_standard_classifier(num_classes, input_shape=(100, 100, 3), hp=None):
+    """
+    Standard CNN Classifier. Can be used normally or tuned via KerasTuner if 'hp' is provided.
+    """
+    # If KerasTuner is active, let it choose hyperparameters dynamically
+    if hp is not None:
+        filters_1 = hp.Choice('filters_1', values=[16, 32, 64])
+        filters_2 = hp.Choice('filters_2', values=[32, 64, 128])
+        dense_units = hp.Int('dense_units', min_value=64, max_value=256, step=64)
+        dropout_rate = hp.Float('dropout_rate', min_value=0.1, max_value=0.5, step=0.1)
+        lr = hp.Choice('learning_rate', values=[1e-2, 1e-3, 1e-4])
+    else:
+        # Default fallback values
+        filters_1 = 32
+        filters_2 = 64
+        dense_units = 128
+        dropout_rate = 0.5
+        lr = 0.001
+
+    model = models.Sequential([
+        layers.Input(shape=input_shape),
+        layers.Conv2D(filters_1, (3, 3), activation='relu', padding='same'),
+        layers.MaxPooling2D((2, 2)),
+        
+        layers.Conv2D(filters_2, (3, 3), activation='relu', padding='same'),
+        layers.MaxPooling2D((2, 2)),
+        
+        layers.Flatten(),
+        layers.Dense(dense_units, activation='relu'),
+        layers.Dropout(dropout_rate),
+        layers.Dense(num_classes, activation='softmax')
+    ])
     
-    # Feature Path (Manual Texture)
-    feat_input = layers.Input(shape=feat_shape, name="feat_input")
-    
-    # Fusion
-    combined = layers.concatenate([spatial, feat_input])
-    z = layers.Dense(64, activation='relu')(combined)
-    z = layers.BatchNormalization()(z)
-    
-    # Final Classification Layer
-    output = layers.Dense(num_classes, activation='softmax')(z)
-    
-    # Single Model definition
-    model = models.Model(inputs=[img_input, feat_input], outputs=output)
-    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate=lr),
+        loss='categorical_crossentropy',
+        metrics=['accuracy']
+    )
     
     return model
